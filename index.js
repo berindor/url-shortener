@@ -36,23 +36,24 @@ const urlencodedParser = bodyParser.urlencoded({ extended: false });
 app.use(urlencodedParser);
 
 app.route('/api/shorturl').post(urlencodedParser, function (req, res) {
-  dns.lookup(req.body.url, err => {
-    if (err) {
-      console.log('{ error: "invalid url" }', err);
-    } else {
-      console.log('valid url');
-    }
-  });
-  //problem: circlyapp.com --> valid url, but redirect does not work
-  //problem: https://www.circlyapp.com/ --> invalid url, redirect works
-  //todo: res.json error message when url is invalid
-  urlArr.push(req.body.url);
-  const shortUrl = urlArr.findIndex(element => element === req.body.url);
-  console.log(urlArr);
-  res.json({ original_url: req.body.url, short_url: shortUrl });
+  try {
+    const url = new URL(req.body.url);
+    dns.lookup(url.hostname, err => {
+      if (err) {
+        res.json({ error: 'invalid url' });
+      } else {
+        urlArr.push(url.href);
+        const shortUrl = urlArr.length - 1;
+        console.log(urlArr);
+        res.json({ original_url: req.body.url, short_url: shortUrl });
+      }
+    });
+  } catch (err) {
+    res.json({ error: 'invalid url' });
+  }
 });
 
 app.get('/api/shorturl/:shorturl', function (req, res) {
-  const originalUrl = urlArr[req.params.shorturl];
-  res.redirect(originalUrl);
+  const url = urlArr[req.params.shorturl];
+  res.redirect(url);
 });
