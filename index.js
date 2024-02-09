@@ -4,6 +4,7 @@ const cors = require('cors');
 const app = express();
 let bodyParser = require('body-parser');
 const dns = require('dns');
+let mongoose = require('mongoose');
 
 // Basic Configuration
 const port = process.env.PORT || 3300;
@@ -26,6 +27,26 @@ app.listen(port, function () {
 });
 
 //here starts the url shortener part
+mongoose.connect(process.env.MONGO_URI);
+
+const urlSchema = new mongoose.Schema({
+  url: String,
+  shortUrl: Number
+});
+
+let UrlModel = mongoose.model('urlModel', urlSchema);
+
+const createSampleUrl = done => {
+  let url = new UrlModel({ url: 'https://www.freecodecamp.org/', shortUrl: 0 });
+  url.save(function (err, data) {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log(url, ' saved successfully');
+      done(null, data);
+    }
+  });
+};
 
 //array to store the urls for the first version of app
 let urlArr = [];
