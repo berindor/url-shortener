@@ -30,22 +30,16 @@ app.listen(port, function () {
 mongoose.connect(process.env.MONGO_URI);
 
 const urlSchema = new mongoose.Schema({
-  url: String,
+  originalUrl: String,
+  redirectUrl: String,
   shortUrl: Number
 });
 
 let UrlModel = mongoose.model('urlModel', urlSchema);
 
-const createSampleUrl = done => {
-  let url = new UrlModel({ url: 'https://www.freecodecamp.org/', shortUrl: 0 });
-  url.save(function (err, data) {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log(url, ' saved successfully');
-      done(null, data);
-    }
-  });
+const addUrlToDb = (originalUrl, redirectUrl, shortUrl) => {
+  let url = new UrlModel({ originalUrl, redirectUrl, shortUrl });
+  url.save();
 };
 
 //array to store the urls for the first version of app
@@ -56,16 +50,17 @@ const urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 app.use(urlencodedParser);
 
-app.route('/api/shorturl').post(urlencodedParser, function (req, res) {
+app.route('/api/shorturl').post(urlencodedParser, async (req, res) => {
   try {
     const url = new URL(req.body.url);
-    dns.lookup(url.hostname, err => {
+    dns.lookup(url.hostname, async err => {
       if (err) {
         res.json({ error: 'invalid url' });
       } else {
         urlArr.push(url.href);
         const shortUrl = urlArr.length - 1;
         console.log(urlArr);
+        //        addUrlToDb(req.body.url, url.href, shortUrl);
         res.json({ original_url: req.body.url, short_url: shortUrl });
       }
     });
@@ -74,7 +69,8 @@ app.route('/api/shorturl').post(urlencodedParser, function (req, res) {
   }
 });
 
-app.get('/api/shorturl/:shorturl', function (req, res) {
-  const url = urlArr[req.params.shorturl];
-  res.redirect(url);
+app.get('/api/shorturl/:shorturl', async function (req, res) {
+  const url = await UrlModel.findOne({ shortUrl: req.params.shorturl });
+  console.log('redirect to ', url.redirectUrl);
+  res.redirect(url.redirectUrl);
 });
